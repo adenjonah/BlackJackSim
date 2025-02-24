@@ -278,6 +278,7 @@ def simulate_blackjack(number_of_shoes=10000):
     total_hands = 0
     total_blackjacks = 0
 
+    # Global extremes
     overall_max_true_count = float('-inf')
     overall_min_true_count = float('inf')
     cards_at_max_true_count = []
@@ -285,50 +286,69 @@ def simulate_blackjack(number_of_shoes=10000):
 
     for _shoe_idx in tqdm(range(number_of_shoes), desc="Simulating Blackjack"):
         shoe_profit = 0.0
-        initial_tc = table.shoe.getTrueCount()
-        max_tc = initial_tc
-        min_tc = initial_tc
+
+        # Track per-shoe extremes
+        max_tc = table.shoe.getTrueCount()
+        min_tc = max_tc
+        # We'll store the *pre-hand* composition for that round in these:
         cards_at_max_this_shoe = table.shoe.cards[:]
         cards_at_min_this_shoe = table.shoe.cards[:]
+
         hands_this_shoe = 0
         blackjacks_this_shoe = 0
 
-        while table.shoe.cardsRemaining() >= 10:
-            current_tc = table.shoe.getTrueCount()
-            if current_tc > max_tc:
-                max_tc = current_tc
-                cards_at_max_this_shoe = table.shoe.cards[:]
-            if current_tc < min_tc:
-                min_tc = current_tc
-                cards_at_min_this_shoe = table.shoe.cards[:]
+        # Keep dealing as long as at least 6 cards remain to begin a new hand
+        while table.shoe.cardsRemaining() >= 6:
+            pre_hand_tc = table.shoe.getTrueCount()
+            pre_hand_cards = table.shoe.cards[:]
 
             round_profit = table.playRound()
+
+            # If round returns None, it means it voided mid-play (ran out of cards)
+            if round_profit is None:
+                break
+
+            # If this new true count is above the shoe's current max, store it
+            if pre_hand_tc > max_tc:
+                max_tc = pre_hand_tc
+                # Store the shoe composition from *before* the round started
+                cards_at_max_this_shoe = pre_hand_cards
+
+            # If it's below the shoe's current min, store it
+            if pre_hand_tc < min_tc:
+                min_tc = pre_hand_tc
+                cards_at_min_this_shoe = pre_hand_cards
+
             shoe_profit += round_profit
             hands_this_shoe += 1
 
+            # Count blackjacks in player's first hand
             if table.player.hands[0].isBlackJack():
                 blackjacks_this_shoe += 1
 
+        # After shoe finishes, update global extremes (and snapshots)
         if max_tc > overall_max_true_count:
             overall_max_true_count = max_tc
-            cards_at_max_true_count = cards_at_max_this_shoe
+            cards_at_max_true_count = cards_at_max_this_shoe[:]
         if min_tc < overall_min_true_count:
             overall_min_true_count = min_tc
-            cards_at_min_true_count = cards_at_min_this_shoe
+            cards_at_min_true_count = cards_at_min_this_shoe[:]
 
         highest_true_counts.append(max_tc)
         lowest_true_counts.append(min_tc)
         total_hands += hands_this_shoe
         total_blackjacks += blackjacks_this_shoe
 
+        # Shuffle for the next shoe
         table.shoe.shuffle()
         total_profit += shoe_profit
 
-    avg_highest_true_count = sum(highest_true_counts) / len(highest_true_counts)
-    avg_lowest_true_count = sum(lowest_true_counts) / len(lowest_true_counts)
-    avg_ev_per_shoe = total_profit / number_of_shoes
-    avg_hands_per_shoe = total_hands / number_of_shoes
-    avg_bj_per_shoe = total_blackjacks / number_of_shoes
+    # Summaries
+    avg_highest_true_count = sum(highest_true_counts) / len(highest_true_counts) if highest_true_counts else 0
+    avg_lowest_true_count = sum(lowest_true_counts) / len(lowest_true_counts) if lowest_true_counts else 0
+    avg_ev_per_shoe = total_profit / number_of_shoes if number_of_shoes else 0
+    avg_hands_per_shoe = total_hands / number_of_shoes if number_of_shoes else 0
+    avg_bj_per_shoe = total_blackjacks / number_of_shoes if number_of_shoes else 0
 
     print("Simulation Results:")
     print("-------------------")
@@ -341,6 +361,6 @@ def simulate_blackjack(number_of_shoes=10000):
     print(f"Average player blackjacks per shoe: {avg_bj_per_shoe:.2f}")
     print(f"Cards left in the shoe at highest true count: {cards_at_max_true_count}")
     print(f"Cards left in the shoe at lowest true count: {cards_at_min_true_count}")
-    
+
 if __name__ == "__main__":
-    simulate_blackjack(500000)
+    simulate_blackjack(50000)
