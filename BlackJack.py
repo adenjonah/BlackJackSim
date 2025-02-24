@@ -1,5 +1,6 @@
 import random
 from enum import Enum, auto
+from tqdm import tqdm
 
 class PlayOptions(Enum):
     STAY = 1
@@ -27,458 +28,440 @@ class HandResults(Enum):
     PUSH = auto()
     SURRENDER = auto()
 
-# Define the matricies for basic strategy
 hardHand2CardLookup = [
-    # columns are based on dealer's face card from 1 (Ace) to 10, rows based on player's total (no ace) 5 to 21
-    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.HIT]
-    ,[PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.SURRENDER, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.SURRENDER]
-    ,[PlayOptions.SURRENDER, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.SURRENDER, PlayOptions.SURRENDER]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.HIT],
+    [PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],  # replaced surrender
+    [PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],  # replaced surrender
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
 ]
+
 hardHandLookup = [
-    # columns are based on dealer's face card from 1 (Ace) to 10, rows based on player's total (no ace) 5 to 21
-    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
 ]
+
 softHand2CardLookup = [
-    # columns are based on dealer's face card from 1 (Ace) to 10, rows based on player's total with at least 1 ace counted as 11, totals of 14 to 21
-    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
 ]
+
 softHandLookup = [
-    # columns are based on dealer's face card from 1 (Ace) to 10, rows based on player's total with at least 1 ace counted as 11, totals of 14 to 21
-    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.HIT, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
 ]
+
 pairHandLookup = [
-    # columns are based on dealer's face card from 1 (Ace) to 10, rows based on player's pair card, 1 through 10
-    [PlayOptions.SURRENDER, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT]
-    ,[PlayOptions.HIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.HIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT]
-    ,[PlayOptions.SURRENDER, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT]
-    ,[PlayOptions.STAY, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.STAY, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.STAY]
-    ,[PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY]
+    # Replaced any 'SURRENDER' with e.g. HIT
+    [PlayOptions.HIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT],
+    [PlayOptions.HIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.DOUBLE, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.HIT, PlayOptions.HIT, PlayOptions.HIT],
+    [PlayOptions.HIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT],
+    [PlayOptions.STAY, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.STAY, PlayOptions.SPLIT, PlayOptions.SPLIT, PlayOptions.STAY],
+    [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
 ]
 
-
+###########################################################
+# Single-deck Shoe with insurance threshold at TC>=3, etc. #
+###########################################################
 class Shoe:
-    def __init__(self, d = 1) -> None:
+    def __init__(self, num_decks=1):
+        self.decks = num_decks
         self.cards = []
-        self.decks = d
-        if (self.decks <= 0) or (self.decks > 10):
-            self.decks = 1
-
-        for i in range(0, 52*self.decks):
-            self.cards.append(i%52+1)
-
-    def getCard(self):
-        card = self.cards.pop(random.randrange(len(self.cards))) % 13 + 1
-        if card > 10:
-            card = 10
-        return card
-
-    def needShuffle(self):
-        # Return true if less than 1/3 of the shoe is remaining
-        return (len(self.cards) / (self.decks*52)) < .33
+        for i in range(52 * self.decks):
+            raw_rank = (i % 52) % 13 + 1
+            # Convert face cards to 10
+            self.cards.append(10 if raw_rank > 10 else raw_rank)
+        self.running_count = 0
 
     def shuffle(self):
         self.__init__(self.decks)
 
+    def cardsRemaining(self):
+        return len(self.cards)
+
+    def getTrueCount(self):
+        decks_left = max(0.01, self.cardsRemaining() / 52.0)
+        return self.running_count / decks_left
+
+    def getBet(self):
+        tc = self.getTrueCount()
+        if tc < 1:
+            return 1
+        elif tc < 3:
+            return 3
+        elif tc < 6:
+            return 5
+        else:
+            return 10
+
+    def getCard(self):
+        if not self.cards:
+            self.shuffle()
+        card = random.choice(self.cards)
+        self.cards.remove(card)
+        # Hi-lo adjust
+        if card in [2, 3, 4, 5, 6]:
+            self.running_count += 1
+        elif card in [1, 10]:
+            self.running_count -= 1
+        return card
+
+######################################################
+# Hand class: no surrender, but we do allow insurance #
+######################################################
 class Hand:
-    def __init__(self) -> None:
+    def __init__(self):
         self.cards = []
-        self.total = 0
-        self.actions = []
         self.handType = HandType.NORMAL
         self.result = None
-    
+
     def addCard(self, card):
         self.cards.append(card)
 
-    def getHandTotal(self, softHand = False):
-        self.total = 0
-        for card in self.cards:
-            if card >= 10:
-                self.total += 10
-            elif card > 1:
-                self.total += card
-            else:                       # card is an ace
-                if self.total <= 10:    # if total <= 10, count the ace as an 11, and set softHand
-                    softHand = True
-                    self.total += 11
-                else:                   # if total > 10, must count ace as a 1
-                    self.total += 1
-        
-        if self.total > 21 and softHand:   # if total > 21 and we have aces counting as 11...
-            self.total -= 10
-            softHand = False
-        
-        return self.total
-
-    def basicStrategyPlay(self, dealerFaceCard):
-        softHand = False
-        handTotal = self.getHandTotal(softHand)
-
-        if len(self.cards) < 2:
-            return PlayOptions.HIT
-        elif handTotal > 21:
-            self.actions.append(PlayOptions.STAY)
-            return PlayOptions.STAY
-        elif len(self.cards) == 2:
-            if self.cards[0] == self.cards[1]:
-                # use pair hand lookup
-                self.actions.append(pairHandLookup[self.cards[0]-1][dealerFaceCard-1])
-                return pairHandLookup[self.cards[0]-1][dealerFaceCard-1]
-            
-            elif softHand:
-                # Use the soft hand table since there's an ace counted as 11
-                self.actions.append(softHand2CardLookup[handTotal-13][dealerFaceCard-1])
-                return softHand2CardLookup[handTotal-13][dealerFaceCard-1]
-            
+    def getHandTotal(self):
+        total = 0
+        aces_as_11 = 0
+        for c in self.cards:
+            if c == 1:
+                total += 11
+                aces_as_11 += 1
             else:
-                # Use the hand hand lookup table since everything else is a hard hand
-                self.actions.append(hardHand2CardLookup[handTotal-5][dealerFaceCard-1])
-                return hardHand2CardLookup[handTotal-5][dealerFaceCard-1]
-        else:
-            # Hand has more than 2 cards
-            if softHand:
-                # Use the soft hand table since there's an ace counted as 11
-                self.actions.append(softHandLookup[handTotal-13][dealerFaceCard-1])
-                return softHandLookup[handTotal-13][dealerFaceCard-1]
-            
+                total += c
+        while total > 21 and aces_as_11 > 0:
+            total -= 10
+            aces_as_11 -= 1
+        return total
+
+    def isSoftHand(self):
+        total = 0
+        aces_as_11 = 0
+        for c in self.cards:
+            if c == 1:
+                total += 11
+                aces_as_11 += 1
             else:
-                # Use the hand hand lookup table since everything else is a hard hand
-                self.actions.append(hardHandLookup[handTotal-5][dealerFaceCard-1])
-                return hardHandLookup[handTotal-5][dealerFaceCard-1]
+                total += c
+        while total > 21 and aces_as_11 > 0:
+            total -= 10
+            aces_as_11 -= 1
+        return (aces_as_11 > 0 and total <= 21)
 
-    def randomPlay(self):           # Returns a random allowable action
-
-        # First, let's make sure the hand has at least 2 cards in it
-        # This action is NOT recorded as first 2 cards are not player's choice
-        if len(self.cards) < 2:
-            return PlayOptions.HIT
-        
-        if len(self.cards) == 2:                    # First 2 cards, we might have different options
-            if self.getHandTotal() == 21:           # Player has blackjack
-                self.actions.append(PlayOptions.STAY)
-                return PlayOptions.STAY
-
-            elif self.cards[0] == self.cards[1]:      # Two of the same cards
-                action = random.choice(list(PlayOptions))     # Randomly select action based on all available actions
-                self.actions.append(action)
-                return action
-            
-            else:
-                action = random.choice([PlayOptions.HIT, PlayOptions.STAY, PlayOptions.DOUBLE, PlayOptions.SURRENDER])
-                self.actions.append(action)
-                return action
-
-        if self.getHandTotal() < 21:                # randomly play something unless we have 21
-            action = random.choice([PlayOptions.HIT, PlayOptions.STAY])
-            self.actions.append(action)
-            return action
-        else:
-            self.actions.append(PlayOptions.STAY)
-            return PlayOptions.STAY
-
-    def dealerPlay(self):               # Returns an action based on using BJ dealer rules
-        # Assumes dealer has already received at least 2 cards
-
-        softHand = False
-        handTotal = self.getHandTotal(softHand)
-        if len(self.cards) == 2 and handTotal == 21:  # Dealer has blackjack
-            return PlayOptions.STAY
-        
-        if handTotal < 17 or (handTotal == 17 and softHand): # Hit until we have 17, also hit on soft-17
-            return PlayOptions.HIT
-        
-        return PlayOptions.STAY
-            
     def isBlackJack(self):
         return (len(self.cards) == 2) and (self.getHandTotal() == 21)
 
-    def reset(self):
-        self.__init__()
+    def dealerPlay(self):
+        total = self.getHandTotal()
+        soft = self.isSoftHand()
+        if len(self.cards) == 2 and total == 21:
+            return PlayOptions.STAY
+        if total < 17 or (total == 17 and soft):
+            return PlayOptions.HIT
+        return PlayOptions.STAY
 
+    def basicStrategyPlay(self, dealerFaceCard, trueCount=0):
+        handTotal = self.getHandTotal()
+        softHand = self.isSoftHand()
+
+        if len(self.cards) < 2:
+            return PlayOptions.HIT
+        if handTotal > 21:
+            return PlayOptions.STAY
+
+        # Basic Strategy
+        if len(self.cards) == 2:
+            if self.cards[0] == self.cards[1]:
+                action = pairHandLookup[self.cards[0] - 1][dealerFaceCard - 1]
+            elif softHand:
+                action = softHand2CardLookup[handTotal - 13][dealerFaceCard - 1]
+            else:
+                action = hardHand2CardLookup[handTotal - 5][dealerFaceCard - 1]
+        else:
+            if softHand:
+                action = softHandLookup[handTotal - 13][dealerFaceCard - 1]
+            else:
+                action = hardHandLookup[handTotal - 5][dealerFaceCard - 1]
+
+        # Deviations
+        # Split 10s vs 5 if TC≥5 or vs 6 if TC≥6
+        if len(self.cards) == 2 and self.cards[0] == 10 and self.cards[1] == 10:
+            if dealerFaceCard == 5 and trueCount >= 5:
+                action = PlayOptions.SPLIT
+            elif dealerFaceCard == 6 and trueCount >= 6:
+                action = PlayOptions.SPLIT
+
+        # Stand on 16 vs T if TC>0
+        if handTotal == 16 and dealerFaceCard == 10 and trueCount > 0:
+            action = PlayOptions.STAY
+
+        # Stand on 15 vs T if TC≥4
+        if handTotal == 15 and dealerFaceCard == 10 and trueCount >= 4:
+            action = PlayOptions.STAY
+
+        return action
+
+#################################################
+# Player, Dealer, & Table classes with INSURANCE #
+#################################################
 class Player:
-    def __init__(self) -> None:
-        self.hands = []
-        self.hands.append(Hand())         # Start player with 1 hand
-    
-    def reset(self):
-        self.__init__()
+    def __init__(self):
+        self.hands = [Hand()]
 
 class Dealer:
-    def __init__(self) -> None:
+    def __init__(self):
         self.hand = Hand()
 
-    def reset(self):
-        self.__init__()
-
 class Table:
-    def __init__(self) -> None:
-        self.shoe = Shoe(8)     #Table's shoe has 8 decks
-        self.players = []
+    def __init__(self):
+        self.shoe = Shoe(1)
+        self.player = Player()
         self.dealer = Dealer()
+        self.activeHands = 1
+        self.insurance_bet = 0.0
+        self.profit_from_round = 0.0
 
     def dealFirstTwoCards(self):
-        # First, give each player a card, then the dealer
-        for p in self.players:
-            p.hands[0].addCard(self.shoe.getCard())
-        
-        # Dealer's first card
-        self.dealer.hand.addCard(self.shoe.getCard())
+        for _ in range(2):
+            self.player.hands[0].addCard(self.shoe.getCard())
+            self.dealer.hand.addCard(self.shoe.getCard())
 
-        # Give each player their 2nd card
-        for p in self.players:
-            p.hands[0].addCard(self.shoe.getCard())
-
-        # Dealer's 2nd card
-        self.dealer.hand.addCard(self.shoe.getCard())
+    def offerInsurance(self, bet):
+        # If dealer upcard = Ace & True Count >= 3 => buy insurance
+        if self.dealer.hand.cards[1] == 1 and self.shoe.getTrueCount() >= 3:
+            self.insurance_bet = bet / 2.0
+        else:
+            self.insurance_bet = 0.0
 
     def playRound(self):
-        self.activeHands = len(self.players)     # Set active hands to the number of players
+        # Bet based on current true count
+        bet = self.shoe.getBet()
+        self.profit_from_round = 0
 
-        # check to see if shoe needs to be shuffled
-        if self.shoe.needShuffle():
+        # Check if there are enough cards to deal a hand
+        if self.shoe.cardsRemaining() < 6:
             self.shoe.shuffle()
+            return None  # Indicate that the hand was voided
+
+        # Reset hands
+        self.player.hands = [Hand()]
+        self.dealer.hand = Hand()
 
         self.dealFirstTwoCards()
 
-        # Players play their hands if dealer doesn't have blackjack
+        # If dealer doesn't have blackjack, player acts
         if not self.dealer.hand.isBlackJack():
-            # Have each player play their hand
-            for i in range (0, len(self.players)):
-                p = self.players[i]
-                self.playPlayerHand(p.hands[0], p, self.dealer.hand.cards[0])
-
-            # If there are any active hands left, then dealer plays
+            self.playPlayerHand(self.player.hands[0], self.dealer.hand.cards[0])
+            # Dealer action if player isn't already out
             if self.activeHands > 0:
                 while True:
-                    dealerChoice = self.dealer.hand.dealerPlay()
-                    if dealerChoice == PlayOptions.STAY:
+                    dealer_action = self.dealer.hand.dealerPlay()
+                    if dealer_action == PlayOptions.STAY:
                         break
-
-                    if dealerChoice == PlayOptions.HIT:
+                    elif dealer_action == PlayOptions.HIT:
+                        if self.shoe.cardsRemaining() == 0:
+                            self.shoe.shuffle()
+                            return None  # Indicate that the hand was voided
                         self.dealer.hand.addCard(self.shoe.getCard())
-        
-        self.recordHandResults()
-            
-    def playPlayerHand(self, hand, player, dealerFaceCard):
+
+        # Resolve
+        self.recordHandResults(bet)
+        return self.profit_from_round
+
+    def playPlayerHand(self, hand, dealer_upcard):
+        self.activeHands = 1
         if hand.isBlackJack():
-            # This hand has won and doesn't need to continue
             self.activeHands -= 1
-            return                  
+            return
+
+        while True:
+            tc = self.shoe.getTrueCount()
+            move = hand.basicStrategyPlay(dealer_upcard, tc)
+
+            if move in [PlayOptions.HIT, PlayOptions.DOUBLE]:
+                hand.addCard(self.shoe.getCard())
+            elif move == PlayOptions.SPLIT:
+                # Not implementing advanced splitting logic here
+                break
+
+            if move in [PlayOptions.STAY, PlayOptions.DOUBLE]:
+                break
+
+        # Check bust on final
+        if hand.getHandTotal() > 21:
+            self.activeHands -= 1
+            if hand.handType == HandType.DOUBLE:
+                hand.result = HandResults.DOUBLELOSS
+            else:
+                hand.result = HandResults.LOST
+        elif move == PlayOptions.DOUBLE:
+            hand.handType = HandType.DOUBLE
+
+    def recordHandResults(self, bet):
+        ph = self.player.hands[0]
+        if ph.result is not None:
+            # Already decided (bust, etc.)
+            if ph.result == HandResults.LOST:
+                self.profit_from_round -= bet
+            elif ph.result == HandResults.DOUBLELOSS:
+                self.profit_from_round -= (2 * bet)
+            return
+
+        dealer_total = self.dealer.hand.getHandTotal()
+        player_total = ph.getHandTotal()
+
+        if dealer_total > 21:
+            # Dealer bust
+            if ph.handType == HandType.DOUBLE:
+                self.profit_from_round += (2 * bet)
+            else:
+                self.profit_from_round += bet
         else:
-            while True:
-                playerChoice = hand.basicStrategyPlay(dealerFaceCard)
-
-                if playerChoice in [PlayOptions.HIT, PlayOptions.DOUBLE]: 
-                    hand.addCard(self.shoe.getCard())
-                
-                if playerChoice == PlayOptions.SPLIT:
-                    self.activeHands += 1                      # New active hand as a result of split
-                    newHand = Hand()
-                    newHand.handType = HandType.SPLIT          # Recording hand type in case of different rules for split hands
-                    hand.handType = HandType.SPLIT
-                    newHand.cards.append(hand.cards.pop(0))    # Remove a card from old hand to create new hand
-                    player.hands.append(newHand)
-                    self.playPlayerHand(newHand, player, dealerFaceCard)
-
-                if playerChoice in [PlayOptions.STAY, PlayOptions.DOUBLE, PlayOptions.SURRENDER]:
-                    break
-
-            if playerChoice == PlayOptions.DOUBLE:
-                hand.handType = HandType.DOUBLE 
-            elif playerChoice == PlayOptions.SURRENDER:
-                # Player busted, active player count decreases
-                self.activeHands -= 1
-                hand.result = HandResults.SURRENDER
-            elif hand.getHandTotal() > 21:
-                # Player busted, active player count decreases
-                self.activeHands -= 1
-                if hand.handType == HandType.DOUBLE:
-                    hand.result = HandResults.DOUBLELOSS
+            if player_total == dealer_total:
+                # push
+                pass
+            elif player_total > dealer_total:
+                if ph.handType == HandType.DOUBLE:
+                    self.profit_from_round += (2 * bet)
                 else:
-                    hand.result = HandResults.LOST
-
-    def recordHandResults(self):
-        # Go through each hand to see if it has won
-        for i in range (0, len(self.players)):
-            p = self.players[i]
-            for j in range (0, len(p.hands)):
-                h = p.hands[j]
-                # Check to see if hand already has a result (because of surrender or bust)
-                if h.result == None:
-                    # Check for dealer blackjack
-                    if self.dealer.hand.isBlackJack():
-                        if h.isBlackJack():
-                            h.result = HandResults.PUSH
-                        else:
-                            h.result = HandResults.LOST
-                    # Check for hand blackjack (must be normal hand, not a split, and dealer must not have blackjack)
-                    elif h.isBlackJack() and h.handType == HandType.NORMAL:
-                        h.result = HandResults.BLACKJACK
-                    # Check if player has busted (should already be checked when player is playing, but just in case)
-                    elif h.getHandTotal() > 21:
-                        if h.handType == HandType.DOUBLE:
-                            h.result = HandResults.DOUBLELOSS
-                        else:
-                            h.result = HandResults.LOST
-                    # Check if dealer has busted
-                    elif self.dealer.hand.getHandTotal() > 21:
-                        # dealer has busted, all hands win
-                        if h.handType == HandType.DOUBLE:
-                            h.result = HandResults.DOUBLEWIN
-                        else:
-                            h.result = HandResults.WIN
-                    # Check for push
-                    elif self.dealer.hand.getHandTotal() == h.getHandTotal():
-                        h.result = HandResults.PUSH
-                    # Player has better hand
-                    elif h.getHandTotal() > self.dealer.hand.getHandTotal():
-                        if h.handType == HandType.DOUBLE:
-                            h.result = HandResults.DOUBLEWIN
-                        else:
-                            h.result = HandResults.WIN
-                    # Dealer has better hand
-                    else: #self.dealer.hand.getHandTotal() > h.getHandTotal():
-                        if h.handType == HandType.DOUBLE:
-                            h.result = HandResults.DOUBLELOSS
-                        else:
-                            h.result = HandResults.LOST     
-
-    def printVerboseResults(self):
-        result = "Dealer FaceCard = " + str(self.dealer.hand.cards[0])
-        result += ", Total = " + str(self.dealer.hand.getHandTotal())
-        result += ", BJ = " + str(self.dealer.hand.isBlackJack())
-        result += ", Bust = " + str(self.dealer.hand.getHandTotal() > 21)
-        result += ", Cards = " + str(self.dealer.hand.cards)
-        
-        for i in range (0, len(self.players)):
-            p = self.players[i]
-            result += ", Player " + str(i+1)
-            for j in range (0, len(p.hands)):
-                h = p.hands[j]
-                result += ", Hand " + str(j+1)
-                result += ", Total = " + str(h.getHandTotal())
-                result += ", BJ = " + str(h.getHandTotal() == 21 and len(h.cards) == 2)
-                result += ", Bust = " + str(h.getHandTotal() > 21)
-                result += ", Cards = " + str(h.cards)
-                result += ", Actions = " + str(h.actions)
-                result += ", " + str(h.result)
-
-        return result
-
-    def printShortResults(self):
-        result = str(self.dealer.hand.cards[0])
-        
-        for i in range (0, len(self.players)):
-            p = self.players[i]
-            for j in range (0, 1): # Only doing first hand
-                h = p.hands[j]
-                result += ", " + str(h.cards[0]) + ", " + str(h.cards[1])
-                firstTwoCards = h.cards[0] + h.cards[1]
-                softHand = False
-                if h.cards[0] == 1 or h.cards[1] == 1:
-                    firstTwoCards += 10
-                    softHand = True
-                result += ", " + str(firstTwoCards)
-                result += ", " + str(softHand)                                      # Has an ace
-                result += ", " + str(h.getHandTotal() == 21 and len(h.cards) == 2)  # Is blackjack
-                result += ", " + str(h.getHandTotal() > 21)                         # Busted
-                if len(h.actions) > 0:
-                    result += ", " + str(h.actions[0])
+                    self.profit_from_round += bet
+            else:
+                # dealer wins
+                if ph.handType == HandType.DOUBLE:
+                    self.profit_from_round -= (2 * bet)
                 else:
-                    result += ", NO ACTION"
+                    self.profit_from_round -= bet
 
-                result += ", " + str(h.result)
-                
-                # Calculate value of hand based on results
-                value = 0.0
-                if h.result == HandResults.WIN:
-                    value = 1.0
-                elif h.result == HandResults.DOUBLEWIN:
-                    value = 2.0
-                elif h.result == HandResults.DOUBLELOSS:
-                    value = -2.0
-                elif h.result == HandResults.BLACKJACK:
-                    value = 1.2     # Based on 6:5 blackjack return. Change to 1.5 for 3:1
-                elif h.result == HandResults.LOST:
-                    value = -1.0
-                elif h.result == HandResults.PUSH:
-                    value = 0.0
-                elif h.result == HandResults.SURRENDER:
-                    value = -0.5
+        # Check if player had a blackjack => +0.5 * bet on top of normal win
+        if ph.isBlackJack() and ph.handType == HandType.NORMAL:
+            # Means dealer didn't have BJ => 3:2 payoff => +0.5
+            self.profit_from_round += (0.5 * bet)
 
-                result += ", " + str(value)
-        return result
-    
-    def reset(self):
-        for player in self.players:
-            player.reset()
-        
-        self.dealer.reset()
+###############################################
+# Extended Simulation with True Count Tracking #
+###############################################
+def simulate_blackjack(number_of_shoes=10000):
+    table = Table()
+    total_profit = 0.0
+    true_count_changes = []
+    highest_true_counts = []
+    lowest_true_counts = []
+    total_hands = 0
+    total_blackjacks = 0
 
-        if self.shoe.needShuffle():
-            self.shoe.shuffle()
+    overall_max_true_count = float('-inf')
+    overall_min_true_count = float('inf')
+    cards_at_max_true_count = []
+    cards_at_min_true_count = []
 
+    # Add a progress bar to the simulation loop
+    for _shoe_idx in tqdm(range(number_of_shoes), desc="Simulating Blackjack"):
+        shoe_profit = 0.0
+        initial_true_count = table.shoe.getTrueCount()
+        max_true_count = initial_true_count
+        min_true_count = initial_true_count
+        cards_at_max_this_shoe = table.shoe.cards[:]
+        cards_at_min_this_shoe = table.shoe.cards[:]
+        hands_this_shoe = 0
+        blackjacks_this_shoe = 0
 
-table = Table()
+        # Keep dealing rounds until <20 cards remain (provides buffer for hits)
+        while table.shoe.cardsRemaining() >= 20:
+            # Track true count changes before playing a round
+            current_true_count = table.shoe.getTrueCount()
+            if current_true_count > max_true_count:
+                max_true_count = current_true_count
+                cards_at_max_this_shoe = table.shoe.cards[:]
+            if current_true_count < min_true_count:
+                min_true_count = current_true_count
+                cards_at_min_this_shoe = table.shoe.cards[:]
 
-table.players.append(Player())
-print("Round, Dealer FaceCard, Player Card 1, Card 2, Total, Soft Hand, Is BlackJack, Busted, Action, Result, Value")
+            round_profit = table.playRound()
+            shoe_profit += round_profit
+            hands_this_shoe += 1
+            if table.player.hands[0].isBlackJack():
+                blackjacks_this_shoe += 1
 
-for i in range(0, 1000):        # Simulates 1,000 rounds of BlackJack
-    table.playRound()
-    print(str(i) + ", " + table.printShortResults())
-#    print("Round " + str(i) + ": " + table.printVerboseResults())     # More verbose printout of each hand played
-#    print("\n")
+        # Update overall max and min true counts and their corresponding cards
+        if max_true_count > overall_max_true_count:
+            overall_max_true_count = max_true_count
+            cards_at_max_true_count = cards_at_max_this_shoe
+        if min_true_count < overall_min_true_count:
+            overall_min_true_count = min_true_count
+            cards_at_min_true_count = cards_at_min_this_shoe
 
-    table.reset()
+        # Store max and min true counts for this shoe
+        highest_true_counts.append(max_true_count)
+        lowest_true_counts.append(min_true_count)
+        total_hands += hands_this_shoe
+        total_blackjacks += blackjacks_this_shoe
+
+        # Once <20 cards, that shoe is done. Shuffle for next shoe.
+        table.shoe.shuffle()
+        total_profit += shoe_profit
+
+    # Calculate statistics
+    average_highest_true_count = sum(highest_true_counts) / len(highest_true_counts)
+    average_lowest_true_count = sum(lowest_true_counts) / len(lowest_true_counts)
+    average_ev_per_shoe = total_profit / number_of_shoes
+    average_hands_per_shoe = total_hands / number_of_shoes
+    average_blackjacks_per_shoe = total_blackjacks / number_of_shoes
+
+    print(f"Simulation Results:")
+    print(f"-------------------")
+    print(f"Highest true count seen: {overall_max_true_count}")
+    print(f"Lowest true count seen: {overall_min_true_count}")
+    print(f"Average highest true count per shoe: {average_highest_true_count:.2f}")
+    print(f"Average lowest true count per shoe: {average_lowest_true_count:.2f}")
+    print(f"Average EV per shoe: {average_ev_per_shoe:.2f}")
+    print(f"Average hands per shoe: {average_hands_per_shoe:.2f}")
+    print(f"Average player blackjacks per shoe: {average_blackjacks_per_shoe:.2f}")
+    print(f"Cards left in the shoe at highest true count: {cards_at_max_true_count}")
+    print(f"Cards left in the shoe at lowest true count: {cards_at_min_true_count}")
+
+if __name__ == "__main__":
+    simulate_blackjack(500000)
