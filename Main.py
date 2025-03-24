@@ -3,6 +3,12 @@ from enum import Enum, auto
 from tqdm import tqdm
 import Strategy
 
+
+decks_per_shoe = 1
+shoes_per_simulation = 10_000
+style = 'Normal'
+max_units = 10
+
 class DealerResults(Enum):
     BLACKJACK = 1
     BUSTED = 2
@@ -22,9 +28,6 @@ class HandResults(Enum):
     PUSH = auto()
     SURRENDER = auto()
 
-###########################################################
-# Single-deck Shoe with insurance threshold at TC>=3, etc. #
-###########################################################
 class Shoe:
     def __init__(self, num_decks=1):
         self.decks = num_decks
@@ -45,7 +48,7 @@ class Shoe:
         return self.running_count / decks_left
 
     def getBet(self):
-        return Strategy.getBet(self.getTrueCount())
+        return Strategy.getBet(self.getTrueCount(), style, max_units)
 
     def getCard(self):
         if not self.cards:
@@ -159,8 +162,9 @@ class Dealer:
         self.hand = Hand()
 
 class Table:
+    
     def __init__(self):
-        self.shoe = Shoe(1)
+        self.shoe = Shoe(decks_per_shoe)
         self.player = Player()
         self.dealer = Dealer()
         self.activeHands = 1
@@ -357,10 +361,11 @@ def simulate_blackjack(number_of_shoes=10000):
     print(f"Average highest true count per shoe: {avg_highest_true_count:.2f}")
     print(f"Average lowest true count per shoe: {avg_lowest_true_count:.2f}")
     print(f"Average EV per shoe: {avg_ev_per_shoe:.2f}")
+    print(f"Expected Hourly in Min Units: {avg_ev_per_shoe*(20/decks_per_shoe):.2f}")
     print(f"Average hands per shoe: {avg_hands_per_shoe:.2f}")
     print(f"Average player blackjacks per shoe: {avg_bj_per_shoe:.2f}")
     print(f"Cards left in the shoe at highest true count: {cards_at_max_true_count}")
     print(f"Cards left in the shoe at lowest true count: {cards_at_min_true_count}")
 
 if __name__ == "__main__":
-    simulate_blackjack(50000)
+    simulate_blackjack(shoes_per_simulation)

@@ -84,12 +84,27 @@ pairHandLookup = [
     [PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY, PlayOptions.STAY],
 ]
 
-def getBet(true_count):
-    if true_count < 1:
-        return 1
-    elif true_count < 3:
-        return 3
-    elif true_count < 6:
-        return 5
+def getBet(true_count, style, max_units):
+
+    
+    if style == 'Max_EV':
+        if true_count < 2:
+            return 1
+        else:
+            return max_units
+
     else:
-        return 10
+        if true_count < 1:
+            return 1
+        elif true_count < 2:
+            return .2 * max_units
+        elif true_count < 3:
+            return .4 * max_units
+        elif true_count < 4:
+            return .6 * max_units
+        elif true_count < 5:
+            return .8 * max_units
+        elif true_count < 6:
+            return .9 * max_units
+        else:
+            return max_units
